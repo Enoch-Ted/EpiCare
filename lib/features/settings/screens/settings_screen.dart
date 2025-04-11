@@ -1,4 +1,5 @@
 // lib/features/settings/screens/settings_screen.dart
+import 'package:care/core/providers/notification_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -149,48 +150,76 @@ class SettingsScreen extends ConsumerWidget {
             },
           ),
           // Notification Toggle (Keep from previous version)
-          settingsAsyncValue.when(
-            loading: () => const ListTile(title: Text("Loading settings..."), /* ... */),
-            error: (err, stack) => ListTile(title: Text("Error loading settings"), /* ... */),
-            data: (settings) {
-              bool initialValue = settings?.notificationsEnabled ?? false;
-              return SwitchListTile(
-                title: const Text("Notifications"),
-                subtitle: const Text("Receive scan reminders"),
-                value: initialValue,
-                onChanged: (currentUser?.userId == null) ? null : (bool newValue) async {
-                  // ... (Existing onChanged logic remains the same) ...
-                  final existingSettings = settings ?? UserSettings(userId: currentUser!.userId!);
-                  final updatedSettings = existingSettings.copyWith(notificationsEnabled: newValue);
-                  final success = await ref.read(userSettingsDaoProvider).upsertSettings(updatedSettings);
-                  if (success >= 0) {
-                    print("Settings updated successfully.");
-                    ref.invalidate(currentUserSettingsProvider);
-                    // *** Call Notification Service ***
 
-                    //if (newValue) {
-                      // Use the SAVED reminder days value
-                      //final days = updatedSettings.scanReminderDays; // From DB/object
-                      //print("Attempting to schedule notifications for every $days days");
-                      //if (days > 0) {
-                       // notificationService.scheduleRepeatingReminder(days);
-                      //} else {
-                        //print("Reminder days set to 0 or less, cancelling notifications.");
-                       // notificationService.cancelAllReminders();
-                      //}
-                    //} else {
-                      //print("Attempting to cancel scheduled notifications");
-                      //notificationService.cancelAllReminders();
-                    //}/
-                    // *** End Call ***
-                  } else { /* Show error */ }
-                },
-                secondary: Icon(initialValue ? Icons.notifications_active_outlined : Icons.notifications_off_outlined),
-                activeColor: Theme.of(context).colorScheme.primary,
-              );
-            },
-          ),
-          // *** ADD ListTile for Reminder Settings ***
+          settingsAsyncValue.when(
+            loading: () => const ListTile(title: Text("Loading settings..."), leading: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+            error: (err, stack) => ListTile(title: Text("Error loading settings", style: TextStyle(color: Theme.of(context).colorScheme.error)), leading: Icon(Icons.error, color: Theme.of(context).colorScheme.error)),
+              data: (settings) {
+                bool initialValue = settings?.notificationsEnabled ?? false;
+                return SwitchListTile(
+                  title: const Text("Notifications"),
+                  subtitle: const Text("Receive scan reminders"),
+                  value: initialValue,
+                  // *** Modify onChanged ***
+                  onChanged: (bool newValue) async { // Remove currentUserId check from here
+                    // *** Get currentUserId INSIDE the callback ***
+                    final currentUserId = ref.read(currentUserProvider)?.userId;
+                    if (currentUserId == null) {
+                      print("Error: Cannot update settings, user ID is null.");
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Cannot update settings: User not identified."), backgroundColor: Colors.red)
+                      );
+                      return; // Exit if no user ID
+                    }
+                    // *** End Get currentUserId ***
+
+                    // Create updated settings object
+                    final existingSettings = settings ?? UserSettings(userId: currentUserId); // Use validated currentUserId
+                    final updatedSettings = existingSettings.copyWith(notificationsEnabled: newValue);
+
+                    // Use try-catch for DB operation
+                    try {
+                      final success = await ref.read(userSettingsDaoProvider).upsertSettings(updatedSettings);
+
+                      if (success >= 0) {
+                        print("Settings updated successfully.");
+                        ref.invalidate(currentUserSettingsProvider);
+
+                        // Call Notification Service Correctly
+                        final notificationService = ref.read(notificationServiceProvider);
+                        if (newValue) {
+                          final days = updatedSettings.scanReminderDays;
+                          print("Attempting to schedule notifications for every $days days");
+                          if (days > 0) {
+                            await notificationService.scheduleRepeatingReminder(days);
+                          } else {
+                            print("Reminder days set to 0 or less, cancelling notifications.");
+                            await notificationService.cancelAllReminders();
+                          }
+                        } else {
+                          print("Attempting to cancel scheduled notifications");
+                          await notificationService.cancelAllReminders();
+                        }
+
+                      } else {
+                        throw Exception("Database update failed (returned $success)");
+                      }
+                    } catch (e) { // Catch errors from DB or notifications
+                      print("Error updating settings or scheduling notifications: $e");
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Failed to update notification settings: $e"), backgroundColor: Theme.of(context).colorScheme.error)
+                        );
+                      }
+                    } // End try-catch
+                  }, // *** End onChanged ***
+                  secondary: Icon(initialValue ? Icons.notifications_active_outlined : Icons.notifications_off_outlined),
+                  activeColor: Theme.of(context).colorScheme.primary,
+                );
+              }, // *** ADD COMMA HERE ***
+          ), // <<< End settingsAsyncValue.when
+
+          // Reminder Frequency ListTile
           ListTile(
             leading: const Icon(Icons.calendar_month_outlined),
             title: const Text("Reminder Frequency"),
@@ -202,71 +231,75 @@ class SettingsScreen extends ConsumerWidget {
 
           // --- Help & Support Section ---
           _buildSectionHeader("Help & Support", context),
-          ListTile( leading: const Icon(Icons.contact_mail_outlined), title: const Text("Contact Us"), trailing: const Icon(Icons.arrow_forward_ios, size: 16), onTap: () => context.push(AppRoutes.settingsContact)),
-          // Conditionally show Change Password
+          ListTile( leading: const Icon(Icons.contact_mail_outlined), title: const Text("Contact Us"), trailing: const Icon(Icons.arrow_forward_ios, size: 16), onTap: () => context.push(AppRoutes.settingsContact)),// Conditionally show Change Password
           if (canChangePassword)
-            ListTile(
-              leading: const Icon(Icons.password_outlined),
-              title: const Text("Change My Password/PIN"),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              onTap: () {
-                print("Navigate to Change Password");
-                // TODO: Define AppRoutes.changePassword and push
-                // context.push(AppRoutes.changePassword);
-                context.push(AppRoutes.changePassword);
-              },
-            ),
-          ListTile( leading: const Icon(Icons.info_outline), title: const Text("Skin Cancer Information"), trailing: const Icon(Icons.arrow_forward_ios, size: 16), onTap: () => context.push(AppRoutes.settingsInfo)),
-          ListTile( leading: const Icon(Icons.quiz_outlined), title: const Text("FAQ"), trailing: const Icon(Icons.arrow_forward_ios, size: 16), onTap: () => context.push(AppRoutes.settingsFaq)),
-          ListTile( leading: const Icon(Icons.integration_instructions_outlined), title: const Text("Instructions for Use"), trailing: const Icon(Icons.arrow_forward_ios, size: 16), onTap: () => context.push(AppRoutes.settingsInstructions)),
-          ListTile( leading: const Icon(Icons.privacy_tip_outlined), title: const Text("Privacy Policy"), trailing: const Icon(Icons.arrow_forward_ios, size: 16), onTap: () => context.push(AppRoutes.settingsPrivacy)),
-          ListTile( leading: const Icon(Icons.description_outlined), title: const Text("Terms and Conditions"), trailing: const Icon(Icons.arrow_forward_ios, size: 16), onTap: () => context.push(AppRoutes.settingsTerms)),
-          ListTile( leading: const Icon(Icons.gavel_outlined), title: const Text("Disclaimer"), trailing: const Icon(Icons.arrow_forward_ios, size: 16), onTap: () => context.push(AppRoutes.settingsDisclaimer)),
+                ListTile(
+                  leading: const Icon(Icons.password_outlined),
+                  title: const Text("Change My Password/PIN"),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    print("Navigate to Change Password");
+                    // TODO: Define AppRoutes.changePassword and push
+                    // context.push(AppRoutes.changePassword);
+                    context.push(AppRoutes.changePassword);
+                  },
+                ),
+
+
+
+
+
+                  ListTile( leading: const Icon(Icons.info_outline), title: const Text("Skin Cancer Information"), trailing: const Icon(Icons.arrow_forward_ios, size: 16), onTap: () => context.push(AppRoutes.settingsInfo)),
+                  ListTile( leading: const Icon(Icons.quiz_outlined), title: const Text("FAQ"), trailing: const Icon(Icons.arrow_forward_ios, size: 16), onTap: () => context.push(AppRoutes.settingsFaq)),
+                  ListTile( leading: const Icon(Icons.integration_instructions_outlined), title: const Text("Instructions for Use"), trailing: const Icon(Icons.arrow_forward_ios, size: 16), onTap: () => context.push(AppRoutes.settingsInstructions)),
+                  ListTile( leading: const Icon(Icons.privacy_tip_outlined), title: const Text("Privacy Policy"), trailing: const Icon(Icons.arrow_forward_ios, size: 16), onTap: () => context.push(AppRoutes.settingsPrivacy)),
+                  ListTile( leading: const Icon(Icons.description_outlined), title: const Text("Terms and Conditions"), trailing: const Icon(Icons.arrow_forward_ios, size: 16), onTap: () => context.push(AppRoutes.settingsTerms)),
+                  ListTile( leading: const Icon(Icons.gavel_outlined), title: const Text("Disclaimer"), trailing: const Icon(Icons.arrow_forward_ios, size: 16), onTap: () => context.push(AppRoutes.settingsDisclaimer)),
 
           // --- Account Actions Section ---
-          _buildSectionHeader("Account Actions", context),
-          ListTile(
-            leading: Icon(Icons.delete_forever_outlined, color: Theme.of(context).colorScheme.error),
-            title: Text("Delete My Profile", style: TextStyle(color: Theme.of(context).colorScheme.error)),
-            onTap: () => _confirmAndDeleteAccount(context, ref),
-          ),
-          ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text("Sign Out"),
-            onTap: () {
-              print("Signing out...");
-              ref.read(authNotifierProvider.notifier).logout();
-            },
-          ),
+                  _buildSectionHeader("Account Actions", context),
+                  ListTile(
+                    leading: Icon(Icons.delete_forever_outlined, color: Theme.of(context).colorScheme.error),
+                    title: Text("Delete My Profile", style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                    onTap: () => _confirmAndDeleteAccount(context, ref),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.logout),
+                    title: const Text("Sign Out"),
+                    onTap: () {
+                      print("Signing out...");
+                      ref.read(authNotifierProvider.notifier).logout();
+                    },
+                  ),
 
-          // --- App Info ---
-          const Divider(height: 32),
-          Consumer( // Use Consumer to watch the provider inline
-              builder: (context, ref, child) {
-                final pkgInfoAsync = ref.watch(packageInfoProvider);
-                return pkgInfoAsync.when(
-                  data: (info) => ListTile(
-                    title: const Text("App Version"),
-                    subtitle: Text("${info.version} (Build ${info.buildNumber})"),
-                    dense: true,
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  loading: () => const ListTile(
-                    title: Text("App Version"),
-                    subtitle: Text("Loading..."),
-                    dense: true,
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  error: (e, s) => ListTile(
-                    title: const Text("App Version"),
-                    subtitle: const Text("Error loading version"),
-                    dense: true,
-                    visualDensity: VisualDensity.compact,
-                  ),
+                // --- App Info ---
+                const Divider(height: 32),
+                Consumer( // Use Consumer to watch the provider inline
+                    builder: (context, ref, child) {
+                      final pkgInfoAsync = ref.watch(packageInfoProvider);
+                      return pkgInfoAsync.when(
+                        data: (info) => ListTile(
+                          title: const Text("App Version"),
+                          subtitle: Text("${info.version} (Build ${info.buildNumber})"),
+                          dense: true,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        loading: () => const ListTile(
+                          title: Text("App Version"),
+                          subtitle: Text("Loading..."),
+                          dense: true,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        error: (e, s) => ListTile(
+                          title: const Text("App Version"),
+                          subtitle: const Text("Error loading version"),
+                          dense: true,
+                          visualDensity: VisualDensity.compact,
+                        ),
                 );
               }
           ),
-          const SizedBox(height: 16),// Padding at bottom
+                const SizedBox(height: 16),// Padding at bottom
         ],
       ), // End ListView
     ); // End Scaffold

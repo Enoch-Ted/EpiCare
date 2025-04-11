@@ -231,6 +231,9 @@ class ScanDetailScreen extends ConsumerWidget {
                             : Image.file( // Attempt to load real file
                           File(scan.imagePath),
                           fit: BoxFit.cover,
+
+
+
                           errorBuilder: (context, error, stackTrace) {
                             print("Error loading image ${scan.imagePath}: $error");
                             return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.broken_image_outlined, size: 50, color: Colors.grey), SizedBox(height: 8), Text("Image not found", style: TextStyle(color: Colors.grey))]));

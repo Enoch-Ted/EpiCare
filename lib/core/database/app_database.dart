@@ -105,13 +105,15 @@ class AppDatabase {
     ''');
     print("Scans table SQL prepared.");
 
-    // 3. lesions Table
+
+    // 3. lesions Table (Corrected CHECK constraint with String Literals)
     batch.execute('''
     CREATE TABLE ${DbTableNames.lesions} (
       lesion_id INTEGER PRIMARY KEY AUTOINCREMENT,
       scan_id INTEGER NOT NULL,
-      risk_level TEXT NOT NULL CHECK(risk_level IN ('${RiskLevel.Benign}', '${RiskLevel.Precursor}', '${RiskLevel.Malignant}', '${RiskLevel.Undetermined}')), -- General risk
-      lesion_type TEXT NOT NULL, -- Specific type from model (e.g., 'Melanoma')
+      -- *** Use PLAIN STRINGS for CHECK constraint ***
+      risk_level TEXT NOT NULL CHECK(risk_level IN ('Benign', 'Precursor', 'Malignant', 'Undetermined')),
+      lesion_type TEXT NOT NULL,
       confidence_score REAL NOT NULL CHECK(confidence_score >= 0 AND confidence_score <= 1),
       body_map_x REAL NOT NULL CHECK(body_map_x >= 0 AND body_map_x <= 1),
       body_map_y REAL NOT NULL CHECK(body_map_y >= 0 AND body_map_y <= 1),

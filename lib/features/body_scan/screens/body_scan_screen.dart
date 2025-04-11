@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:io'; // For FileImage if needed later
 import 'package:go_router/go_router.dart';
+import 'dart:math';
 
 // Import core project files (adjust package name 'epiccare' if different)
 import 'package:care/core/database/entities/user.dart';
@@ -12,6 +13,8 @@ import 'package:care/core/constants/app_constants.dart';
 import 'package:care/presentation/theme/app_theme.dart'; // For direct theme constants if needed
 import 'package:care/core/providers/database_providers.dart';
 import 'package:care/core/navigation/app_router.dart';
+import 'package:care/features/profile/widgets/profile_bio_modal.dart';
+import 'package:care/features/body_scan/providers/body_map_providers.dart';
 
 // State provider for managing the front/back view toggle
 final isBodyFrontProvider = StateProvider<bool>((ref) => true); // Default to front view
@@ -81,6 +84,8 @@ class BodyScanScreen extends ConsumerWidget {
     final bool isFront = ref.watch(isBodyFrontProvider);
     final isBodyFrontNotifier = ref.read(isBodyFrontProvider.notifier);
     final lesionCountsAsyncValue = ref.watch(userLesionCountsProvider);
+    // *** Watch provider for visible lesions ***
+    final List<Lesion> visibleLesions = ref.watch(visibleBodyMapLesionsProvider);
 
     // Theme variables for convenience
     final ColorScheme colors = Theme.of(context).colorScheme;
@@ -93,6 +98,11 @@ class BodyScanScreen extends ConsumerWidget {
         body: Center(child: CircularProgressIndicator(color: colors.primary)),
       );
     }
+
+    // --- Define Aspect Ratios ---
+    const double frontAspectRatio = 631 / 1500;
+    const double backAspectRatio = 630 / 1494;
+    final double currentAspectRatio = isFront ? frontAspectRatio : backAspectRatio;
 
     // --- Main UI ---
     return Scaffold(
@@ -108,8 +118,21 @@ class BodyScanScreen extends ConsumerWidget {
                 children: [
                   GestureDetector(
                     onTap: () {
-                      print("Tapped Profile Pic/Name");
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("TODO: Show Bio Data Modal")));
+                      print("Tapped Profile Pic/Name - Showing Modal");
+                      // *** Show Modal Bottom Sheet ***
+                      showModalBottomSheet(
+                        context: context,
+                        // Optional: Make it scrollable if content might exceed height
+                        isScrollControlled: true,
+                        // Optional: Customize shape
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
+                        ),
+                        builder: (modalContext) {
+                          // Pass the current user data to the modal widget
+                          return ProfileBioModal(user: currentUser);
+                        },
+                      );
                       // TODO: Implement Modal/BottomSheet display for user bio
                     },
                     child: CircleAvatar(
@@ -229,15 +252,91 @@ class BodyScanScreen extends ConsumerWidget {
               ), // End IntrinsicHeight
               const SizedBox(height: 12),
 
-              // --- Body Image Area ---
+              // --- Body Image Area with Markers ---
               Expanded(
-                child: Center(
-                  child: Image.asset(
-                    isFront ? AssetPaths.bodyMapFront : AssetPaths.bodyMapBack, // Use state for image path
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
+                child: LayoutBuilder( // Use LayoutBuilder to get constraints
+                  builder: (context, constraints) {
+                    final availableWidth = constraints.maxWidth;
+                    final availableHeight = constraints.maxHeight;
+
+                    // Calculate the actual render size based on aspect ratio and BoxFit.contain
+                    double renderWidth;
+                    double renderHeight;
+                    double offsetX = 0; // Horizontal padding if image is shorter than available width
+                    double offsetY = 0; // Vertical padding if image is narrower than available height
+
+                    // Determine if the width or height is the limiting constraint
+                    if (availableWidth / availableHeight > currentAspectRatio) {
+                      // Height is limiting, width will have padding
+                      renderHeight = availableHeight;
+                      renderWidth = availableHeight * currentAspectRatio;
+                      offsetX = (availableWidth - renderWidth) / 2; // Centered padding
+                    } else {
+                      // Width is limiting, height will have padding
+                      renderWidth = availableWidth;
+                      renderHeight = availableWidth / currentAspectRatio;
+                      offsetY = (availableHeight - renderHeight) / 2; // Centered padding
+                    }
+
+                    // Prevent negative offsets if calculation is slightly off
+                    offsetX = max(0, offsetX);
+                    offsetY = max(0, offsetY);
+
+                    print("Layout: Available($availableWidth x $availableHeight), Render($renderWidth x $renderHeight), Offset($offsetX, $offsetY)");
+
+                    return Stack(
+                      children: [
+                        // --- Body Image ---
+                        // Position the image within the Stack based on calculated offsets
+                        Positioned(
+                          left: offsetX,
+                          top: offsetY,
+                          width: renderWidth,
+                          height: renderHeight,
+                          child: Image.asset(
+                            isFront ? AssetPaths.bodyMapFront : AssetPaths.bodyMapBack,
+                            // No fit needed here as size is explicitly set
+                          ),
+                        ),
+
+                        // --- Lesion Markers ---
+                        // Layer markers on top, using calculated offsets and render size
+                        if (visibleLesions.isNotEmpty)
+                          ...visibleLesions.map((lesion) {
+                            const double markerSize = 24.0;
+                            // Calculate position relative to the RENDERED image box
+                            final double markerLeft = offsetX + (lesion.bodyMapX * renderWidth) - (markerSize / 2);
+                            final double markerTop = offsetY + (lesion.bodyMapY * renderHeight) - (markerSize / 2);
+
+                            // Basic boundary check (optional)
+                            // if (markerLeft < offsetX || markerTop < offsetY || ...)
+
+                            return Positioned(
+                              left: markerLeft,
+                              top: markerTop,
+                              child: GestureDetector(
+                                onTap: () {
+                                  print("Tapped marker for Lesion ID: ${lesion.lesionId}, navigating to Scan ID: ${lesion.scanId}");
+                                  final detailPath = AppRoutes.scanDetail.replaceFirst(':scanId', lesion.scanId.toString());
+                                  context.push(detailPath);
+                                },
+                                child: Tooltip(
+                                  message: "${lesion.lesionType}\n(${lesion.riskLevel})", // Show type/risk
+                                  child: Icon(
+                                    Icons.location_on,
+                                    color: Colors.redAccent.withOpacity(0.9), // Slightly more opaque
+                                    size: markerSize,
+                                    shadows: const [Shadow(blurRadius: 1.0, color: Colors.black54)], // Add shadow
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(), // End map and convert to list
+                      ], // End Stack children
+                    ); // End Stack
+                  }, // End LayoutBuilder builder
+                ), // End LayoutBuilder
+              ), // End Expanded for Body Area
               const SizedBox(height: 8),
 
               // --- Front/Back Toggle (with Lesion Count) ---

@@ -50,11 +50,17 @@ class ProfileListScreen extends ConsumerWidget {
         break;
       case AuthMethod.BIOMETRIC:
         print("Biometric required for user ${tappedUser.userId}. Triggering prompt...");
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("TODO: Trigger Biometric prompt for ${tappedUser.displayName}"))
-        );
-        // TODO: Call biometric login logic via notifier/service
-        // ref.read(authNotifierProvider.notifier).loginWithBiometrics(tappedUser.userId!);
+        // *** Call the actual notifier method ***
+        // Show loading indicator? Biometric prompt is modal anyway.
+        ref.read(authNotifierProvider.notifier).loginWithBiometrics(tappedUser.userId!).then((result) {
+          // Handle result AFTER prompt closes (optional feedback)
+          if (!result.success && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(result.message ?? "Biometric authentication failed."), backgroundColor: Theme.of(context).colorScheme.error)
+            );
+          }
+          // Success is handled by state change and GoRouter redirect if applicable
+        });
         break;
     }
   }

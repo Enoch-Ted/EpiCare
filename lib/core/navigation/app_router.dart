@@ -1,6 +1,7 @@
 // lib/core/navigation/app_router.dart
 
 
+import 'package:care/core/database/entities/lesion.dart' show BodySide;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -14,7 +15,7 @@ import '../../features/profile/screens/profile_list_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../presentation/widgets/app_shell.dart'; // Our BottomNavBar shell
 import '../providers/security_providers.dart'; // To check authentication state
-import'../../features/scan/screens/scan_screen_placeholder.dart';
+import'../../features/scan/screens/scan_screen.dart';
 import 'package:care/features/history/screens/scan_detail_screen.dart';
 import 'package:care/features/auth/screens/auth_prompt_screen.dart';
 import 'package:care/features/profile/screens/account_details_screen.dart';
@@ -24,6 +25,7 @@ import 'package:care/features/assessment/screens/skin_type_result_screen.dart';
 import 'package:care/features/assessment/screens/risk_profile_assessment_screen.dart';
 import 'package:care/features/assessment/screens/risk_profile_result_screen.dart';
 import 'package:care/features/settings/screens/reminder_settings_screen.dart';
+import 'package:care/features/camera/screens/camera_screen.dart';
 part 'app_router.g.dart'; // Riverpod generator file
 
 // --- Route Paths ---
@@ -57,6 +59,7 @@ class AppRoutes {
 
   static const riskAssessment = '/assessment/risk';
   static const riskResult = '/result/risk'; //
+  static const cameraScreen = '/scan/camera';
 // Add other paths later, e.g., '/scan-detail/:scanId'
 }
 
@@ -203,7 +206,7 @@ GoRouter goRouter(GoRouterRef ref) {
         path: AppRoutes.scanScreen,
         // *** ADD parentNavigatorKey HERE ***
         parentNavigatorKey: _rootNavigatorKey, // Specify root key
-        builder: (context, state) => const ScanScreenPlaceholder(),
+        builder: (context, state) => const ScanScreen(),
       ),
 
       GoRoute(
@@ -287,6 +290,26 @@ GoRouter goRouter(GoRouterRef ref) {
         name: 'settingsReminders',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (c,s) => const ReminderSettingsScreen(), // Create this screen
+      ),
+
+      GoRoute(
+        path: AppRoutes.cameraScreen,
+        name: 'cameraScreen',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          // Expecting arguments passed via 'extra'
+          if (state.extra is Map<String, dynamic>) {
+            final args = state.extra as Map<String, dynamic>;
+            final double? x = args['x'] as double?;
+            final double? y = args['y'] as double?;
+            final BodySide? side = args['side'] as BodySide?; // Assuming BodySide passed
+            if (x != null && y != null && side != null) {
+              return CameraScreen(normX: x, normY: y, bodySide: side); // Create this screen
+            }
+          }
+          // Handle missing/invalid arguments
+          return const Scaffold(body: Center(child: Text("Error: Missing camera arguments")));
+        },
       ),
 
 

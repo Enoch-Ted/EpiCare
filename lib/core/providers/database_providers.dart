@@ -15,7 +15,7 @@ import '../database/entities/lesion.dart';
 import '../database/entities/scan.dart';
 import '../database/entities/user.dart';
 import '../database/entities/user_settings.dart';
-
+import '../../features/history/providers/history_filter_providers.dart';
 
 import 'security_providers.dart';
  // Need Scan entity
@@ -79,30 +79,54 @@ Future<Map<String, int>> userLesionCounts(UserLesionCountsRef ref) async {// Cha
   return {'front': frontCount, 'back': backCount};
 }
 
+// Provider to fetch AND FILTER/SORT scans for the current user
 @riverpod
-// *** CORRECT THE REF TYPE HERE ***
-Future<List<Scan>> userScans(UserScansRef ref, {bool newestFirst = true}) async { // Should be UserScansRef
-  print("DEBUG: userScansProvider called.");
-  // Depend on the current user state
+Future<List<Scan>> userScans(UserScansRef ref) async { // Removed newestFirst argument
   final currentUser = ref.watch(currentUserProvider);
-  // Depend on the ScanDao
   final scanDao = ref.watch(scanDaoProvider);
 
-  if (currentUser == null || currentUser.userId == null) {
-    print("DEBUG: userScansProvider - No current user.");
-    return [];
-  }
-  try { // Add try-catch
-    print("DEBUG: userScansProvider - Fetching scans for user ${currentUser.userId}");
-    final scans = await scanDao.getScansByUserId(currentUser.userId!, newestFirst: newestFirst);
-    print("DEBUG: userScansProvider - Found ${scans.length} scans.");
-    return scans;
-  } catch (e) {
-    print("DEBUG: userScansProvider - Error fetching scans: $e");
-    rethrow; // Rethrow error so .when can catch it
-  }
-}
+  // *** Watch filter states ***
+  final searchQuery = ref.watch(historySearchQueryProvider);
+  final sortOrder = ref.watch(historySortOrderProvider);
+  print("DEBUG: userScansProvider rebuilding. Query: '$searchQuery', Sort: $sortOrder"); // Debug log
 
+  if (currentUser == null || currentUser.userId == null) return [];
+
+  // 1. Fetch ALL scans for the user initially (DAO sorts by date desc by default now)
+  // We'll handle sorting and filtering in Dart now.
+  // Alternatively, modify DAO method to accept search/sort parameters.
+  // Fetching all and filtering here is simpler for moderate amounts of data.
+  List<Scan> allScans = await scanDao.getScansByUserId(currentUser.userId!, newestFirst: true); // Fetch newest first initially
+
+  // 2. Apply Search Filter (Case-insensitive)
+  if (searchQuery.trim().isNotEmpty) {
+    final lowerQuery = searchQuery.trim().toLowerCase();
+    allScans = allScans.where((scan) {
+      final scanName = scan.scanName?.toLowerCase() ?? '';
+      // Add other fields to search if needed (e.g., formatted date?)
+      return scanName.contains(lowerQuery);
+    }).toList();
+  }
+
+  // 3. Apply Sorting
+  allScans.sort((a, b) {
+    switch (sortOrder) {
+      case HistorySortOption.dateAsc:
+        return a.scanDate.compareTo(b.scanDate);
+      case HistorySortOption.nameAsc:
+      // Handle null names gracefully
+        return (a.scanName ?? '').toLowerCase().compareTo((b.scanName ?? '').toLowerCase());
+      case HistorySortOption.nameDesc:
+        return (b.scanName ?? '').toLowerCase().compareTo((a.scanName ?? '').toLowerCase());
+      case HistorySortOption.dateDesc: // Default, already fetched like this, but good to be explicit
+      default:
+        return b.scanDate.compareTo(a.scanDate);
+    }
+  });
+
+  print("DEBUG: userScansProvider returning ${allScans.length} filtered/sorted scans.");
+  return allScans;
+}
 
 @riverpod
 Future<List<User>> allUsers(AllUsersRef ref) async { // Changed Ref name
@@ -146,4 +170,20 @@ Future<List<Lesion>> lesionsByScanId(LesionsByScanIdRef ref, int scanId) async {
   final lesionDao = ref.watch(lesionDaoProvider);
   print("DEBUG: lesionsByScanIdProvider fetching lesions for scan $scanId");
   return lesionDao.getLesionsByScanId(scanId);
+}
+
+// Provider to fetch ALL lesions for the current user
+// This is needed so we can filter by bodySide in the UI provider
+@riverpod
+Future<List<Lesion>> allUserLesions(AllUserLesionsRef ref) async {
+  final currentUser = ref.watch(currentUserProvider);
+  final lesionDao = ref.watch(lesionDaoProvider);
+
+  if (currentUser == null || currentUser.userId == null) {
+    return []; // No user, no lesions
+  }
+  print("DEBUG: allUserLesionsProvider fetching lesions for user ${currentUser.userId}");
+  final lesions = await lesionDao.getAllLesionsByUserId(currentUser.userId!);
+  print("DEBUG: allUserLesionsProvider found ${lesions.length} total lesions.");
+  return lesions;
 }

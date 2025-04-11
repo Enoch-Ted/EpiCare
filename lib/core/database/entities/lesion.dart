@@ -4,6 +4,7 @@ import 'package:equatable/equatable.dart';
 
 // Enum for the side of the body map where the lesion is marked
 enum BodySide { Front, Back }
+enum RiskLevel { Benign, Precursor, Malignant, Undetermined }
 
 class Lesion extends Equatable {
   final int? lesionId; // Nullable for new lesions before insertion (auto-increment)

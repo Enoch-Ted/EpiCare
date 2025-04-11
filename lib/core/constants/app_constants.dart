@@ -1,6 +1,7 @@
 // lib/core/constants/app_constants.dart
 import 'package:flutter/material.dart';  // Import material for Color
-import 'package:care/core/database/entities/user.dart';  // Import SkinType enum
+import 'package:care/core/database/entities/user.dart';// Import SkinType enum
+import 'package:care/core/database/entities/lesion.dart';
 /// Contains constant values used throughout the EpiCare application.
 
 // Enum string values (primarily for database storage where TEXT is used)
@@ -39,6 +40,7 @@ class RiskProfileConstants {
 class LesionTypeConstants {
   static const String ActinicKeratosis = 'Actinic Keratosis / Intraepithelial Carcinoma';
   static const String BasalCellCarcinoma = 'Basal Cell Carcinoma';
+  static const String SquamousCellCarcinoma = ' Squamous Cell Carcinoma';
   static const String BenignKeratosis = 'Benign Keratosis';
   static const String Dermatofibroma = 'Dermatofibroma';
   static const String Melanoma = 'Melanoma';
@@ -47,12 +49,6 @@ class LesionTypeConstants {
 }
 
 // General Risk Level Constants (for the lesions.risk_level column)
-class RiskLevel {
-  static const String Benign = 'Benign';
-  static const String Precursor = 'Precursor';
-  static const String Malignant = 'Malignant';
-  static const String Undetermined = 'Undetermined'; // Good to have a fallback
-}
 
 // Constants for Lesion.bodySide
 class BodySideConstants {
@@ -169,7 +165,24 @@ final Map<RiskProfile, RiskProfileInfo> riskProfileDetails = {
     color: Colors.red.shade700,
   ),
 };
-//Other App-wide Constants (e.g., API Keys if you had online features)
+
+/// *** Use final instead of const, explicitly type values ***
+final Map<String, RiskLevel> lesionTypeToRiskLevel = {
+  LesionTypeConstants.Melanoma: RiskLevel.Malignant ,
+  LesionTypeConstants.BasalCellCarcinoma: RiskLevel.Malignant ,
+  LesionTypeConstants.SquamousCellCarcinoma: RiskLevel.Malignant ,
+
+  LesionTypeConstants.ActinicKeratosis: RiskLevel.Precursor ,
+
+  LesionTypeConstants.MelanocyticNevus: RiskLevel.Benign ,
+  LesionTypeConstants.BenignKeratosis: RiskLevel.Benign ,
+  LesionTypeConstants.Dermatofibroma: RiskLevel.Benign,
+  LesionTypeConstants.VascularLesion: RiskLevel.Benign ,
+
+  "Pending Analysis": RiskLevel.Undetermined ,
+  "Unknown": RiskLevel.Undetermined ,
+};//
+//  App-wide Constants (e.g., API Keys if you had online features)
 // class ApiKeys {
 //   static const String googleMaps = 'YOUR_API_KEY_HERE';
 // }

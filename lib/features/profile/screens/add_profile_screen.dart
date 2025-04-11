@@ -222,6 +222,15 @@ class _AddProfileScreenState extends ConsumerState<AddProfileScreen> {
               },
             ),
             // TODO: Add Biometric option later if implementing
+            RadioListTile<AuthMethod>(
+              title: const Text('Biometric'),
+              subtitle: const Text('Use device Fingerprint / Face ID'),
+              value: AuthMethod.BIOMETRIC,
+              groupValue: selectedAuthMethod, // selectedAuthMethod comes from ref.watch
+              onChanged: (AuthMethod? value) {
+                if (value != null) ref.read(_selectedAuthMethodProvider.notifier).state = value;
+              },
+            ),
             // RadioListTile<AuthMethod>(
             //    title: const Text('Biometric (Fingerprint/Face)'),
             //    value: AuthMethod.BIOMETRIC,

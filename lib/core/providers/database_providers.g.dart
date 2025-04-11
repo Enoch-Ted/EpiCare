@@ -123,145 +123,22 @@ final userLesionCountsProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef UserLesionCountsRef = AutoDisposeFutureProviderRef<Map<String, int>>;
-String _$userScansHash() => r'9f680a56a1cd1cb0c73156ccbf25f59aaab22f9b';
-
-/// Copied from Dart SDK
-class _SystemHash {
-  _SystemHash._();
-
-  static int combine(int hash, int value) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + value);
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
-    return hash ^ (hash >> 6);
-  }
-
-  static int finish(int hash) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
-    // ignore: parameter_assignments
-    hash = hash ^ (hash >> 11);
-    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
-  }
-}
+String _$userScansHash() => r'6ce15296069aa84f9ff8d6a0c5ba8a410c207068';
 
 /// See also [userScans].
 @ProviderFor(userScans)
-const userScansProvider = UserScansFamily();
-
-/// See also [userScans].
-class UserScansFamily extends Family<AsyncValue<List<Scan>>> {
-  /// See also [userScans].
-  const UserScansFamily();
-
-  /// See also [userScans].
-  UserScansProvider call({bool newestFirst = true}) {
-    return UserScansProvider(newestFirst: newestFirst);
-  }
-
-  @override
-  UserScansProvider getProviderOverride(covariant UserScansProvider provider) {
-    return call(newestFirst: provider.newestFirst);
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'userScansProvider';
-}
-
-/// See also [userScans].
-class UserScansProvider extends AutoDisposeFutureProvider<List<Scan>> {
-  /// See also [userScans].
-  UserScansProvider({bool newestFirst = true})
-    : this._internal(
-        (ref) => userScans(ref as UserScansRef, newestFirst: newestFirst),
-        from: userScansProvider,
-        name: r'userScansProvider',
-        debugGetCreateSourceHash:
-            const bool.fromEnvironment('dart.vm.product')
-                ? null
-                : _$userScansHash,
-        dependencies: UserScansFamily._dependencies,
-        allTransitiveDependencies: UserScansFamily._allTransitiveDependencies,
-        newestFirst: newestFirst,
-      );
-
-  UserScansProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.newestFirst,
-  }) : super.internal();
-
-  final bool newestFirst;
-
-  @override
-  Override overrideWith(
-    FutureOr<List<Scan>> Function(UserScansRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: UserScansProvider._internal(
-        (ref) => create(ref as UserScansRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        newestFirst: newestFirst,
-      ),
-    );
-  }
-
-  @override
-  AutoDisposeFutureProviderElement<List<Scan>> createElement() {
-    return _UserScansProviderElement(this);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is UserScansProvider && other.newestFirst == newestFirst;
-  }
-
-  @override
-  int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, newestFirst.hashCode);
-
-    return _SystemHash.finish(hash);
-  }
-}
+final userScansProvider = AutoDisposeFutureProvider<List<Scan>>.internal(
+  userScans,
+  name: r'userScansProvider',
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$userScansHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-mixin UserScansRef on AutoDisposeFutureProviderRef<List<Scan>> {
-  /// The parameter `newestFirst` of this provider.
-  bool get newestFirst;
-}
-
-class _UserScansProviderElement
-    extends AutoDisposeFutureProviderElement<List<Scan>>
-    with UserScansRef {
-  _UserScansProviderElement(super.provider);
-
-  @override
-  bool get newestFirst => (origin as UserScansProvider).newestFirst;
-}
-
+typedef UserScansRef = AutoDisposeFutureProviderRef<List<Scan>>;
 String _$allUsersHash() => r'31f03518feff2826a1fd447962c4fbaec2fd9afe';
 
 /// See also [allUsers].
@@ -299,6 +176,27 @@ final currentUserSettingsProvider =
 // ignore: unused_element
 typedef CurrentUserSettingsRef = AutoDisposeFutureProviderRef<UserSettings?>;
 String _$scanByIdHash() => r'da61cac49db1f52e5c4a689e2651bd7022dcbaea';
+
+/// Copied from Dart SDK
+class _SystemHash {
+  _SystemHash._();
+
+  static int combine(int hash, int value) {
+    // ignore: parameter_assignments
+    hash = 0x1fffffff & (hash + value);
+    // ignore: parameter_assignments
+    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
+    return hash ^ (hash >> 6);
+  }
+
+  static int finish(int hash) {
+    // ignore: parameter_assignments
+    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
+    // ignore: parameter_assignments
+    hash = hash ^ (hash >> 11);
+    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
+  }
+}
 
 /// See also [scanById].
 @ProviderFor(scanById)
@@ -534,5 +432,23 @@ class _LesionsByScanIdProviderElement
   int get scanId => (origin as LesionsByScanIdProvider).scanId;
 }
 
+String _$allUserLesionsHash() => r'aadc55c1677a387ea11df5b5651de90a836d8142';
+
+/// See also [allUserLesions].
+@ProviderFor(allUserLesions)
+final allUserLesionsProvider = AutoDisposeFutureProvider<List<Lesion>>.internal(
+  allUserLesions,
+  name: r'allUserLesionsProvider',
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$allUserLesionsHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef AllUserLesionsRef = AutoDisposeFutureProviderRef<List<Lesion>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

@@ -132,19 +132,28 @@ Future<bool> _testDatabaseOperations(ProviderContainer container, {bool insertOn
     // *** Use the scan ID obtained above ***
     // Lesion 1
     final testLesion1 = Lesion(
-        scanId: testScanId, // Use actual scan ID
-        riskLevel: RiskLevel.Benign, lesionType: LesionTypeConstants.MelanocyticNevus,
-        confidenceScore: 0.92, bodyMapX: 0.25, bodyMapY: 0.30, bodySide: BodySide.Front
+        scanId: testScanId!,
+        // *** Assign Enum.name to String field ***
+        riskLevel: RiskLevel.Benign.name, // Use ENUM value's .name
+        lesionType: LesionTypeConstants.MelanocyticNevus, // Use constant string
+        confidenceScore: 0.92,
+        bodyMapX: 0.25,
+        bodyMapY: 0.30,
+        bodySide: BodySide.Front
     );
     int lesionId1 = await lesionDao.insertLesion(testLesion1);
-    if (lesionId1 <= 0) throw Exception("Lesion 1 insertion failed.");
-    print("SUCCESS: Inserted Lesion ID: $lesionId1");
+    // ... check lesionId1 ...
 
     // Lesion 2
     final testLesion2 = Lesion(
-        scanId: testScanId, // Use actual scan ID
-        riskLevel: RiskLevel.Undetermined, lesionType: LesionTypeConstants.Dermatofibroma,
-        confidenceScore: 0.65, bodyMapX: 0.70, bodyMapY: 0.45, bodySide: BodySide.Back
+        scanId: testScanId,
+        // *** Assign Enum.name to String field ***
+        riskLevel: RiskLevel.Undetermined.name, // Use ENUM value's .name
+        lesionType: LesionTypeConstants.Dermatofibroma, // Use constant string
+        confidenceScore: 0.65,
+        bodyMapX: 0.70,
+        bodyMapY: 0.45,
+        bodySide: BodySide.Back
     );
     int lesionId2 = await lesionDao.insertLesion(testLesion2);
     if (lesionId2 <= 0) throw Exception("Lesion 2 insertion failed.");

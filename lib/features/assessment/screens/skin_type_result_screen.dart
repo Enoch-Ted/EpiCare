@@ -11,9 +11,6 @@ import 'package:care/core/constants/app_constants.dart';
 // *** Import the NEW provider file ***
 import 'package:care/features/assessment/providers/assessment_providers.dart'; // Adjust package name
 
-// Remove the import for the assessment screen itself if providers are separate
-// import 'skin_type_assessment_screen.dart';
-
 class SkinTypeResultScreen extends ConsumerWidget {
   const SkinTypeResultScreen({super.key});
 
@@ -34,15 +31,42 @@ class SkinTypeResultScreen extends ConsumerWidget {
     final TextTheme textTheme = Theme.of(context).textTheme;
     final ColorScheme colors = Theme.of(context).colorScheme;
 
+    // --- Define a consistent border radius ---
+    // Use the same value as in RiskProfileResultScreen for consistency
+    final BorderRadius buttonBorderRadius = BorderRadius.circular(12.0);
+
+    // --- Define consistent ButtonStyle for reuse ---
+    final ButtonStyle elevatedButtonStyle = ElevatedButton.styleFrom(
+      shape: RoundedRectangleBorder(
+        borderRadius: buttonBorderRadius, // Apply consistent radius
+      ),
+      backgroundColor: colors.primary, // Use theme color
+      foregroundColor: colors.onPrimary, // Use theme color
+      padding: const EdgeInsets.symmetric(vertical: 14), // Consistent padding
+      textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold), // Consistent text style
+    );
+
+    final ButtonStyle outlinedButtonStyle = OutlinedButton.styleFrom(
+      shape: RoundedRectangleBorder(
+        borderRadius: buttonBorderRadius, // Apply consistent radius
+      ),
+      side: BorderSide(color: colors.primary), // Use theme color for border
+      foregroundColor: colors.primary, // Use theme color for text
+      padding: const EdgeInsets.symmetric(vertical: 14), // Consistent padding
+      textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold), // Consistent text style
+    );
+    // --- End ButtonStyle definitions ---
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Skin Type Result'),
-        automaticallyImplyLeading: false,
+        automaticallyImplyLeading: false, // No back button if coming from assessment flow
+        elevation: 1,
       ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.stretch, // Stretch buttons
           children: [
             // --- Color Palette Visualization ---
             Center(
@@ -53,41 +77,58 @@ class SkinTypeResultScreen extends ConsumerWidget {
                     color: details.color,
                     shape: BoxShape.circle,
                     border: Border.all(color: colors.outlineVariant, width: 2),
-                    boxShadow: [ /* ... shadow ... */ ]
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      )
+                    ]
                 ),
               ),
             ),
             const SizedBox(height: 16),
 
             // --- Skin Type Name ---
-            Text( details.name, style: textTheme.headlineSmall?.copyWith(color: colors.primary), textAlign: TextAlign.center, ),
+            Text(
+              details.name,
+              style: textTheme.headlineSmall?.copyWith(color: colors.primary), // Use primary theme color for title
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 24),
 
             // --- Description ---
             Expanded(
               child: SingleChildScrollView(
-                child: Text( details.description, style: textTheme.bodyLarge, textAlign: TextAlign.center,),
+                child: Text(
+                  details.description,
+                  style: textTheme.bodyLarge,
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
             const SizedBox(height: 32),
 
             // --- Action Buttons ---
             ElevatedButton(
-              onPressed: () { if (context.canPop()) context.pop(); },
+              onPressed: () {
+                // Safer navigation
+                if (context.canPop()) context.pop(); else context.go(AppRoutes.settings);
+              },
+              style: elevatedButtonStyle, // Apply consistent style
               child: const Text('Done'),
             ),
             const SizedBox(height: 12),
             OutlinedButton(
               onPressed: () {
-                print("Retake Assessment Tapped");
-                // *** Use PUBLIC provider names from assessment_providers.dart ***
-                ref.invalidate(assessmentAnswersProvider); // Use public name
-                ref.invalidate(assessmentPageIndexProvider); // Use public name
-                // *** End Use PUBLIC provider names ***
-
-                // Navigate back to assessment start
+                print("Retake Skin Type Assessment Tapped");
+                // Invalidate skin type assessment providers
+                ref.invalidate(assessmentAnswersProvider);
+                ref.invalidate(assessmentPageIndexProvider);
+                // Navigate back to skin assessment start
                 context.pushReplacement(AppRoutes.skinAssessment);
               },
+              style: outlinedButtonStyle, // Apply consistent style
               child: const Text('Retake Assessment'),
             ),
           ],

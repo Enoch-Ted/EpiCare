@@ -43,6 +43,9 @@ dependencies:
   hooks_riverpod: ^2.6.1
 
   package_info_plus: ^8.0.04
+  camera: ^0.11.1
+
+  flutter_local_notifications: ^17.2.0
 
 
 

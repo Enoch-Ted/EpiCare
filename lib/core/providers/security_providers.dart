@@ -2,6 +2,11 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+// Import local_auth and services (might need Platform check)
+import 'package:local_auth/local_auth.dart';
+import 'package:flutter/services.dart'; // For PlatformException
+import 'dart:io';
+
 // Adjust package name if needed (using epiccare)
 import 'package:care/core/database/entities/user.dart';
 import 'package:care/core/security/crypto_service.dart';
@@ -46,17 +51,68 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   /// Placeholder for biometric login - needs implementation using local_auth.
   Future<AuthResult> loginWithBiometrics(int userId) async {
-    print("AuthNotifier: Attempting biometric login (Simulated) for $userId");
-    final user = await _authService.getUserById(userId);
-    if (user != null && user.authMethod == AuthMethod.BIOMETRIC) {
-      // TODO: Implement actual biometric prompt
-      bool didAuthenticate = true; // Simulate success
-      if (didAuthenticate) {
-        state = user;
-        return AuthResult(success: true, user: user, message: "Biometric login successful (Simulated).");
+    print("AuthNotifier: Attempting biometric login for $userId");
+    final LocalAuthentication localAuth = LocalAuthentication();
+    bool canCheckBiometrics = false;
+    bool isAuthenticated = false;
+    String errorMessage = "Biometric login failed or not available."; // Default error
+
+    try {
+      // 1. Check if biometrics are available on device
+      canCheckBiometrics = await localAuth.canCheckBiometrics;
+      // Optional: Check specific types like fingerprint/face
+      // final List<BiometricType> availableBiometrics = await localAuth.getAvailableBiometrics();
+
+      if (canCheckBiometrics) {
+        print("Biometrics available. Prompting user...");
+        // 2. Trigger authentication prompt
+        isAuthenticated = await localAuth.authenticate(
+          localizedReason: 'Please authenticate to activate your EpiCare profile',
+          options: const AuthenticationOptions(
+            stickyAuth: true, // Keep prompt open after failed attempt
+            biometricOnly: true, // IMPORTANT: Only allow biometrics, not device PIN/password
+          ),
+        );
+        print("Biometric authentication result: $isAuthenticated");
+      } else {
+        print("Biometrics not available on this device.");
+        errorMessage = "Biometrics not available on this device.";
       }
+    } on PlatformException catch (e) {
+      print("Biometric PlatformException: ${e.code} - ${e.message}");
+      // Handle specific errors (e.g., PasscodeNotSet, NotEnrolled, LockedOut)
+      if (e.code == 'NotEnrolled') {
+        errorMessage = 'Biometrics not set up on this device.';
+      } else if (e.code == 'LockedOut' || e.code == 'PermanentlyLockedOut') {
+        errorMessage = 'Biometric authentication locked out. Please use another method or wait.';
+      } else {
+        errorMessage = 'Biometric error: ${e.message ?? "Unknown platform error"}';
+      }
+      isAuthenticated = false;
+    } catch (e) {
+      print("Generic error during biometric auth: $e");
+      isAuthenticated = false;
+      errorMessage = "An unexpected error occurred during biometric authentication.";
     }
-    return AuthResult(success: false, message: "Biometric login failed or not available (Simulated).");
+
+    // 3. Update state and return result
+    if (isAuthenticated) {
+      // Fetch user details AFTER successful authentication
+      final user = await _authService.getUserById(userId);
+      if (user != null && user.authMethod == AuthMethod.BIOMETRIC) {
+        state = user; // Update state
+        return AuthResult(success: true, user: user, message: "Biometric login successful.");
+      } else {
+        // Should not happen if called correctly, but handle case
+        return AuthResult(success: false, message: "User data not found or auth method mismatch after biometric success.");
+      }
+    } else {
+      // Ensure state is null if auth failed
+      // Only set to null if the failed attempt was for the *currently active* user?
+      // Or maybe don't change state on failure here? Let's not change it for now.
+      // state = null;
+      return AuthResult(success: false, message: errorMessage);
+    }
   }
 
   /// Activates a user (sets them as current) if their auth method is NONE.
@@ -146,6 +202,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       return false;
     }
   }
+
+
 
   /// Returns AuthResult indicating success/failure.
   Future<AuthResult> changePassword(int userId, String oldPassword, String newPassword) async {
