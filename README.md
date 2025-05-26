@@ -44,8 +44,8 @@ EpiCare is an offline-capable Android mobile application that performs real-time
 1. **Clone this repository:**
 
 ```bash
-git clone https://github.com/your-username/epicare.git
-cd epicare
+git clone https://github.com/Enoch-Ted/EpiCare.git
+cd EpiCare
 ```
 
 2. **Install dependencies:**
